@@ -3,6 +3,7 @@
 #include "../gtc/constants.hpp"
 #include "../gtc/epsilon.hpp"
 #include "../gtx/transform.hpp"
+#include <cmath>
 
 namespace glm{
 namespace detail
@@ -34,6 +35,11 @@ namespace detail
 	{
 		mat<4, 4, T, Q> LocalMatrix(ModelMatrix);
 
+		for(length_t i = 0; i < 4; ++i)
+		for(length_t j = 0; j < 4; ++j)
+			if(!std::isfinite(LocalMatrix[i][j]))
+				return false;
+
 		// Normalize the matrix.
 		if(epsilonEqual(LocalMatrix[3][3], static_cast<T>(0), epsilon<T>()))
 			return false;
@@ -50,8 +56,10 @@ namespace detail
 			PerspectiveMatrix[i][3] = static_cast<T>(0);
 		PerspectiveMatrix[3][3] = static_cast<T>(1);
 
-		/// TODO: Fixme!
-		if(epsilonEqual(determinant(PerspectiveMatrix), static_cast<T>(0), epsilon<T>()))
+		// This test is scale-invariant. An absolute epsilon incorrectly rejects
+		// valid matrices whose complete transform has a small determinant.
+		T const perspectiveDeterminant = determinant(PerspectiveMatrix);
+		if(!std::isfinite(perspectiveDeterminant) || perspectiveDeterminant == static_cast<T>(0))
 			return false;
 
 		// First, isolate perspective.  This is the messiest.
@@ -99,6 +107,8 @@ namespace detail
 
 		// Compute X scale factor and normalize first row.
 		Scale.x = length(Row[0]);// v3Length(Row[0]);
+		if(Scale.x == static_cast<T>(0) || !std::isfinite(Scale.x))
+			return false;
 
 		Row[0] = detail::scale(Row[0], static_cast<T>(1));
 
@@ -108,6 +118,8 @@ namespace detail
 
 		// Now, compute Y scale and normalize 2nd row.
 		Scale.y = length(Row[1]);
+		if(Scale.y == static_cast<T>(0) || !std::isfinite(Scale.y))
+			return false;
 		Row[1] = detail::scale(Row[1], static_cast<T>(1));
 		Skew.z /= Scale.y;
 
@@ -119,6 +131,8 @@ namespace detail
 
 		// Next, get Z scale and normalize 3rd row.
 		Scale.z = length(Row[2]);
+		if(Scale.z == static_cast<T>(0) || !std::isfinite(Scale.z))
+			return false;
 		Row[2] = detail::scale(Row[2], static_cast<T>(1));
 		Skew.y /= Scale.z;
 		Skew.x /= Scale.z;
@@ -199,35 +213,35 @@ namespace detail
 		vec<3, T, Q> const& scale, qua<T, Q> const& orientation, vec<3, T, Q> const& translation,
 		vec<3, T, Q> const& skew, vec<4, T, Q> const& perspective)
 	{
-		glm::mat4 m = glm::mat4(1.f);
+		mat<4, 4, T, Q> m(static_cast<T>(1));
 
 		m[0][3] = perspective.x;
 		m[1][3] = perspective.y;
 		m[2][3] = perspective.z;
 		m[3][3] = perspective.w;
 
-		m *= glm::translate(translation);
+		m = glm::translate(m, translation);
 		m *= glm::mat4_cast(orientation);
 
 		if (abs(skew.x) > static_cast<T>(0)) {
-			glm::mat4 tmp(1.f);
+			mat<4, 4, T, Q> tmp(static_cast<T>(1));
 			tmp[2][1] = skew.x;
 			m *= tmp;
 		}
 
 		if (abs(skew.y) > static_cast<T>(0)) {
-			glm::mat4 tmp(1.f);
+			mat<4, 4, T, Q> tmp(static_cast<T>(1));
 			tmp[2][0] = skew.y;
 			m *= tmp;
 		}
 
 		if (abs(skew.z) > static_cast<T>(0)) {
-			glm::mat4 tmp(1.f);
+			mat<4, 4, T, Q> tmp(static_cast<T>(1));
 			tmp[1][0] = skew.z;
 			m *= tmp;
 		}
 
-		m *= glm::scale(scale);
+		m = glm::scale(m, scale);
 
 		return m;
 	}

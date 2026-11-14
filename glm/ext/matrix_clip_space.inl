@@ -28,13 +28,14 @@ namespace glm
 	template<typename T>
 	GLM_FUNC_QUALIFIER mat<4, 4, T, defaultp> orthoLH_NO(T left, T right, T bottom, T top, T zNear, T zFar)
 	{
+		T const zRange = zFar - zNear;
 		mat<4, 4, T, defaultp> Result(1);
 		Result[0][0] = static_cast<T>(2) / (right - left);
 		Result[1][1] = static_cast<T>(2) / (top - bottom);
-		Result[2][2] = static_cast<T>(2) / (zFar - zNear);
+		Result[2][2] = static_cast<T>(2) / zRange;
 		Result[3][0] = - (right + left) / (right - left);
 		Result[3][1] = - (top + bottom) / (top - bottom);
-		Result[3][2] = - (zFar + zNear) / (zFar - zNear);
+		Result[3][2] = - (zFar / zRange + zNear / zRange);
 		return Result;
 	}
 
@@ -54,13 +55,14 @@ namespace glm
 	template<typename T>
 	GLM_FUNC_QUALIFIER mat<4, 4, T, defaultp> orthoRH_NO(T left, T right, T bottom, T top, T zNear, T zFar)
 	{
+		T const zRange = zFar - zNear;
 		mat<4, 4, T, defaultp> Result(1);
 		Result[0][0] = static_cast<T>(2) / (right - left);
 		Result[1][1] = static_cast<T>(2) / (top - bottom);
-		Result[2][2] = - static_cast<T>(2) / (zFar - zNear);
+		Result[2][2] = - static_cast<T>(2) / zRange;
 		Result[3][0] = - (right + left) / (right - left);
 		Result[3][1] = - (top + bottom) / (top - bottom);
-		Result[3][2] = - (zFar + zNear) / (zFar - zNear);
+		Result[3][2] = - (zFar / zRange + zNear / zRange);
 		return Result;
 	}
 
@@ -122,56 +124,64 @@ namespace glm
 	template<typename T>
 	GLM_FUNC_QUALIFIER mat<4, 4, T, defaultp> frustumLH_ZO(T left, T right, T bottom, T top, T nearVal, T farVal)
 	{
+		T const zRange = farVal - nearVal;
+		T const farOverRange = farVal / zRange;
 		mat<4, 4, T, defaultp> Result(0);
 		Result[0][0] = (static_cast<T>(2) * nearVal) / (right - left);
 		Result[1][1] = (static_cast<T>(2) * nearVal) / (top - bottom);
 		Result[2][0] = -(right + left) / (right - left);
 		Result[2][1] = -(top + bottom) / (top - bottom);
-		Result[2][2] = farVal / (farVal - nearVal);
+		Result[2][2] = farOverRange;
 		Result[2][3] = static_cast<T>(1);
-		Result[3][2] = -(farVal * nearVal) / (farVal - nearVal);
+		Result[3][2] = -farOverRange * nearVal;
 		return Result;
 	}
 
 	template<typename T>
 	GLM_FUNC_QUALIFIER mat<4, 4, T, defaultp> frustumLH_NO(T left, T right, T bottom, T top, T nearVal, T farVal)
 	{
+		T const zRange = farVal - nearVal;
+		T const farOverRange = farVal / zRange;
 		mat<4, 4, T, defaultp> Result(0);
 		Result[0][0] = (static_cast<T>(2) * nearVal) / (right - left);
 		Result[1][1] = (static_cast<T>(2) * nearVal) / (top - bottom);
 		Result[2][0] = -(right + left) / (right - left);
 		Result[2][1] = -(top + bottom) / (top - bottom);
-		Result[2][2] = (farVal + nearVal) / (farVal - nearVal);
+		Result[2][2] = farOverRange + nearVal / zRange;
 		Result[2][3] = static_cast<T>(1);
-		Result[3][2] = - (static_cast<T>(2) * farVal * nearVal) / (farVal - nearVal);
+		Result[3][2] = - static_cast<T>(2) * farOverRange * nearVal;
 		return Result;
 	}
 
 	template<typename T>
 	GLM_FUNC_QUALIFIER mat<4, 4, T, defaultp> frustumRH_ZO(T left, T right, T bottom, T top, T nearVal, T farVal)
 	{
+		T const zRange = farVal - nearVal;
+		T const farOverRange = farVal / zRange;
 		mat<4, 4, T, defaultp> Result(0);
 		Result[0][0] = (static_cast<T>(2) * nearVal) / (right - left);
 		Result[1][1] = (static_cast<T>(2) * nearVal) / (top - bottom);
 		Result[2][0] = (right + left) / (right - left);
 		Result[2][1] = (top + bottom) / (top - bottom);
-		Result[2][2] = farVal / (nearVal - farVal);
+		Result[2][2] = -farOverRange;
 		Result[2][3] = static_cast<T>(-1);
-		Result[3][2] = -(farVal * nearVal) / (farVal - nearVal);
+		Result[3][2] = -farOverRange * nearVal;
 		return Result;
 	}
 
 	template<typename T>
 	GLM_FUNC_QUALIFIER mat<4, 4, T, defaultp> frustumRH_NO(T left, T right, T bottom, T top, T nearVal, T farVal)
 	{
+		T const zRange = farVal - nearVal;
+		T const farOverRange = farVal / zRange;
 		mat<4, 4, T, defaultp> Result(0);
 		Result[0][0] = (static_cast<T>(2) * nearVal) / (right - left);
 		Result[1][1] = (static_cast<T>(2) * nearVal) / (top - bottom);
 		Result[2][0] = (right + left) / (right - left);
 		Result[2][1] = (top + bottom) / (top - bottom);
-		Result[2][2] = - (farVal + nearVal) / (farVal - nearVal);
+		Result[2][2] = - (farOverRange + nearVal / zRange);
 		Result[2][3] = static_cast<T>(-1);
-		Result[3][2] = - (static_cast<T>(2) * farVal * nearVal) / (farVal - nearVal);
+		Result[3][2] = - static_cast<T>(2) * farOverRange * nearVal;
 		return Result;
 	}
 
@@ -235,13 +245,15 @@ namespace glm
 		assert(abs(aspect - std::numeric_limits<T>::epsilon()) > static_cast<T>(0));
 
 		T const tanHalfFovy = tan(fovy / static_cast<T>(2));
+		T const zRange = zFar - zNear;
+		T const zFarOverRange = zFar / zRange;
 
 		mat<4, 4, T, defaultp> Result(static_cast<T>(0));
 		Result[0][0] = static_cast<T>(1) / (aspect * tanHalfFovy);
 		Result[1][1] = static_cast<T>(1) / (tanHalfFovy);
-		Result[2][2] = zFar / (zNear - zFar);
+		Result[2][2] = - zFarOverRange;
 		Result[2][3] = - static_cast<T>(1);
-		Result[3][2] = -(zFar * zNear) / (zFar - zNear);
+		Result[3][2] = - zFarOverRange * zNear;
 		return Result;
 	}
 
@@ -251,13 +263,15 @@ namespace glm
 		assert(abs(aspect - std::numeric_limits<T>::epsilon()) > static_cast<T>(0));
 
 		T const tanHalfFovy = tan(fovy / static_cast<T>(2));
+		T const zRange = zFar - zNear;
+		T const zFarOverRange = zFar / zRange;
 
 		mat<4, 4, T, defaultp> Result(static_cast<T>(0));
 		Result[0][0] = static_cast<T>(1) / (aspect * tanHalfFovy);
 		Result[1][1] = static_cast<T>(1) / (tanHalfFovy);
-		Result[2][2] = - (zFar + zNear) / (zFar - zNear);
+		Result[2][2] = - (zFarOverRange + zNear / zRange);
 		Result[2][3] = - static_cast<T>(1);
-		Result[3][2] = - (static_cast<T>(2) * zFar * zNear) / (zFar - zNear);
+		Result[3][2] = - static_cast<T>(2) * zFarOverRange * zNear;
 		return Result;
 	}
 
@@ -267,13 +281,15 @@ namespace glm
 		assert(abs(aspect - std::numeric_limits<T>::epsilon()) > static_cast<T>(0));
 
 		T const tanHalfFovy = tan(fovy / static_cast<T>(2));
+		T const zRange = zFar - zNear;
+		T const zFarOverRange = zFar / zRange;
 
 		mat<4, 4, T, defaultp> Result(static_cast<T>(0));
 		Result[0][0] = static_cast<T>(1) / (aspect * tanHalfFovy);
 		Result[1][1] = static_cast<T>(1) / (tanHalfFovy);
-		Result[2][2] = zFar / (zFar - zNear);
+		Result[2][2] = zFarOverRange;
 		Result[2][3] = static_cast<T>(1);
-		Result[3][2] = -(zFar * zNear) / (zFar - zNear);
+		Result[3][2] = - zFarOverRange * zNear;
 		return Result;
 	}
 
@@ -283,13 +299,15 @@ namespace glm
 		assert(abs(aspect - std::numeric_limits<T>::epsilon()) > static_cast<T>(0));
 
 		T const tanHalfFovy = tan(fovy / static_cast<T>(2));
+		T const zRange = zFar - zNear;
+		T const zFarOverRange = zFar / zRange;
 
 		mat<4, 4, T, defaultp> Result(static_cast<T>(0));
 		Result[0][0] = static_cast<T>(1) / (aspect * tanHalfFovy);
 		Result[1][1] = static_cast<T>(1) / (tanHalfFovy);
-		Result[2][2] = (zFar + zNear) / (zFar - zNear);
+		Result[2][2] = zFarOverRange + zNear / zRange;
 		Result[2][3] = static_cast<T>(1);
-		Result[3][2] = - (static_cast<T>(2) * zFar * zNear) / (zFar - zNear);
+		Result[3][2] = - static_cast<T>(2) * zFarOverRange * zNear;
 		return Result;
 	}
 
@@ -358,13 +376,15 @@ namespace glm
 		T const rad = fov;
 		T const h = glm::cos(static_cast<T>(0.5) * rad) / glm::sin(static_cast<T>(0.5) * rad);
 		T const w = h * height / width; ///todo max(width , Height) / min(width , Height)?
+		T const zRange = zFar - zNear;
+		T const zFarOverRange = zFar / zRange;
 
 		mat<4, 4, T, defaultp> Result(static_cast<T>(0));
 		Result[0][0] = w;
 		Result[1][1] = h;
-		Result[2][2] = zFar / (zNear - zFar);
+		Result[2][2] = -zFarOverRange;
 		Result[2][3] = - static_cast<T>(1);
-		Result[3][2] = -(zFar * zNear) / (zFar - zNear);
+		Result[3][2] = -zFarOverRange * zNear;
 		return Result;
 	}
 
@@ -378,13 +398,15 @@ namespace glm
 		T const rad = fov;
 		T const h = glm::cos(static_cast<T>(0.5) * rad) / glm::sin(static_cast<T>(0.5) * rad);
 		T const w = h * height / width; ///todo max(width , Height) / min(width , Height)?
+		T const zRange = zFar - zNear;
+		T const zFarOverRange = zFar / zRange;
 
 		mat<4, 4, T, defaultp> Result(static_cast<T>(0));
 		Result[0][0] = w;
 		Result[1][1] = h;
-		Result[2][2] = - (zFar + zNear) / (zFar - zNear);
+		Result[2][2] = - (zFarOverRange + zNear / zRange);
 		Result[2][3] = - static_cast<T>(1);
-		Result[3][2] = - (static_cast<T>(2) * zFar * zNear) / (zFar - zNear);
+		Result[3][2] = - static_cast<T>(2) * zFarOverRange * zNear;
 		return Result;
 	}
 
@@ -398,13 +420,15 @@ namespace glm
 		T const rad = fov;
 		T const h = glm::cos(static_cast<T>(0.5) * rad) / glm::sin(static_cast<T>(0.5) * rad);
 		T const w = h * height / width; ///todo max(width , Height) / min(width , Height)?
+		T const zRange = zFar - zNear;
+		T const zFarOverRange = zFar / zRange;
 
 		mat<4, 4, T, defaultp> Result(static_cast<T>(0));
 		Result[0][0] = w;
 		Result[1][1] = h;
-		Result[2][2] = zFar / (zFar - zNear);
+		Result[2][2] = zFarOverRange;
 		Result[2][3] = static_cast<T>(1);
-		Result[3][2] = -(zFar * zNear) / (zFar - zNear);
+		Result[3][2] = -zFarOverRange * zNear;
 		return Result;
 	}
 
@@ -418,13 +442,15 @@ namespace glm
 		T const rad = fov;
 		T const h = glm::cos(static_cast<T>(0.5) * rad) / glm::sin(static_cast<T>(0.5) * rad);
 		T const w = h * height / width; ///todo max(width , Height) / min(width , Height)?
+		T const zRange = zFar - zNear;
+		T const zFarOverRange = zFar / zRange;
 
 		mat<4, 4, T, defaultp> Result(static_cast<T>(0));
 		Result[0][0] = w;
 		Result[1][1] = h;
-		Result[2][2] = (zFar + zNear) / (zFar - zNear);
+		Result[2][2] = zFarOverRange + zNear / zRange;
 		Result[2][3] = static_cast<T>(1);
-		Result[3][2] = - (static_cast<T>(2) * zFar * zNear) / (zFar - zNear);
+		Result[3][2] = - static_cast<T>(2) * zFarOverRange * zNear;
 		return Result;
 	}
 

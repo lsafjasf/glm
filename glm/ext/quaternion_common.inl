@@ -1,5 +1,33 @@
+#include <cmath>
+
 namespace glm
 {
+	namespace detail
+	{
+		template<typename T, qualifier Q>
+		GLM_FUNC_QUALIFIER qua<T, Q> normalizedQuatForSlerp(qua<T, Q> const& q)
+		{
+			// Keep finite, very large or very small quaternions from overflowing
+			// (or underflowing) while computing their squared length.
+			if(
+				std::isfinite(q.w) && std::isfinite(q.x) &&
+				std::isfinite(q.y) && std::isfinite(q.z))
+			{
+				T const maxComponent = glm::max(
+					glm::max(glm::abs(q.w), glm::abs(q.x)),
+					glm::max(glm::abs(q.y), glm::abs(q.z)));
+				if(maxComponent > static_cast<T>(0))
+					return normalize(qua<T, Q>::wxyz(
+						q.w / maxComponent, q.x / maxComponent,
+						q.y / maxComponent, q.z / maxComponent));
+			}
+
+			// Let normalize() propagate non-finite inputs and keep its zero
+			// quaternion behavior unchanged.
+			return normalize(q);
+		}
+	}//namespace detail
+
 	template<typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER qua<T, Q> mix(qua<T, Q> const& x, qua<T, Q> const& y, T a)
 	{
@@ -42,33 +70,39 @@ namespace glm
 	{
 		static_assert(std::numeric_limits<T>::is_iec559 || GLM_CONFIG_UNRESTRICTED_FLOAT, "'slerp' only accept floating-point inputs");
 
-		qua<T, Q> z = y;
+		qua<T, Q> const qx = detail::normalizedQuatForSlerp(x);
+		qua<T, Q> const qy = detail::normalizedQuatForSlerp(y);
+		qua<T, Q> z = qy;
 
-		T cosTheta = dot(x, y);
+		T cosTheta = dot(qx, qy);
 
 		// If cosTheta < 0, the interpolation will take the long way around the sphere.
 		// To fix this, one quat must be negated.
 		if(cosTheta < static_cast<T>(0))
 		{
-			z = -y;
+			z = -qy;
 			cosTheta = -cosTheta;
 		}
+
+		// Rounding can move the dot product just outside [-1, 1].
+		if(cosTheta > static_cast<T>(1))
+			cosTheta = static_cast<T>(1);
 
 		// Perform a linear interpolation when cosTheta is close to 1 to avoid side effect of sin(angle) becoming a zero denominator
 		if(cosTheta > static_cast<T>(1) - epsilon<T>())
 		{
 			// Linear interpolation
 			return qua<T, Q>::wxyz(
-				mix(x.w, z.w, a),
-				mix(x.x, z.x, a),
-				mix(x.y, z.y, a),
-				mix(x.z, z.z, a));
+				mix(qx.w, z.w, a),
+				mix(qx.x, z.x, a),
+				mix(qx.y, z.y, a),
+				mix(qx.z, z.z, a));
 		}
 		else
 		{
 			// Essential Mathematics, page 467
 			T angle = acos(cosTheta);
-			return (sin((static_cast<T>(1) - a) * angle) * x + sin(a * angle) * z) / sin(angle);
+			return (sin((static_cast<T>(1) - a) * angle) * qx + sin(a * angle) * z) / sin(angle);
 		}
 	}
 
@@ -78,34 +112,40 @@ namespace glm
         static_assert(std::numeric_limits<T>::is_iec559 || GLM_CONFIG_UNRESTRICTED_FLOAT, "'slerp' only accept floating-point inputs");
         static_assert(std::numeric_limits<S>::is_integer, "'slerp' only accept integer for spin count");
 
-        qua<T, Q> z = y;
+        qua<T, Q> const qx = detail::normalizedQuatForSlerp(x);
+        qua<T, Q> const qy = detail::normalizedQuatForSlerp(y);
+        qua<T, Q> z = qy;
 
-        T cosTheta = dot(x, y);
+        T cosTheta = dot(qx, qy);
 
         // If cosTheta < 0, the interpolation will take the long way around the sphere.
         // To fix this, one quat must be negated.
         if (cosTheta < static_cast<T>(0))
         {
-            z = -y;
+            z = -qy;
             cosTheta = -cosTheta;
         }
+
+        // Rounding can move the dot product just outside [-1, 1].
+        if (cosTheta > static_cast<T>(1))
+            cosTheta = static_cast<T>(1);
 
         // Perform a linear interpolation when cosTheta is close to 1 to avoid side effect of sin(angle) becoming a zero denominator
         if (cosTheta > static_cast<T>(1) - epsilon<T>())
         {
             // Linear interpolation
             return qua<T, Q>::wxyz(
-                mix(x.w, z.w, a),
-                mix(x.x, z.x, a),
-                mix(x.y, z.y, a),
-                mix(x.z, z.z, a));
+                mix(qx.w, z.w, a),
+                mix(qx.x, z.x, a),
+                mix(qx.y, z.y, a),
+                mix(qx.z, z.z, a));
         }
         else
         {
             // Graphics Gems III, page 96
             T angle = acos(cosTheta);
             T phi = angle + static_cast<T>(k) * glm::pi<T>();
-            return (sin(angle - a * phi)* x + sin(a * phi) * z) / sin(angle);
+            return (sin(angle - a * phi) * qx + sin(a * phi) * z) / sin(angle);
         }
     }
 
